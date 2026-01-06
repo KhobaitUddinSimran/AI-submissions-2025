@@ -1,12 +1,21 @@
 # YSMAI HVAC Monitoring System - Python Dependencies
-# No external packages required - uses Python stdlib only
-#
-# This project uses only Python standard library modules:
+
+# Core (stdlib only - no external required):
 # - json: JSON serialization
 # - time: Unix timestamps and timing
 # - heapq: Min-heap priority queue for task scheduling
 # - random: Random number generation for faults/drift
 # - unittest: Testing framework
 
-# For development/testing only (optional):
-# pytest>=6.0 (if you want to use pytest instead of unittest)
+# Machine Learning (optional but recommended for enhanced features):
+pandas>=1.3.0              # Data manipulation and analysis
+scikit-learn>=0.24.0       # ML models (Random Forest, Isolation Forest, Linear Regression)
+numpy>=1.20.0              # Numerical computing
+kagglehub>=0.1.0           # Kaggle dataset downloader
+
+# Frontend (optional):
+streamlit>=1.0.0           # Web dashboard for visualization
+plotly>=5.0.0              # Interactive charts
+
+# Development/Testing (optional):
+pytest>=6.0                # Alternative test framework

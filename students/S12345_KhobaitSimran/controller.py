@@ -114,16 +114,41 @@ class SimulationController:
         # Auto-schedule persistence tasks every 5 seconds
         self._schedule_persistence_tasks(temperature, agent_result["state"])
         
+        # Generate synthetic sensor data for frontend
+        # These would come from real sensors in production
+        rpm = 500 + int(self.tick_count * 5) % 2500  # Simulated RPM
+        oil_pressure_psi = 40.0 + (temperature - 60) * 0.3 + \
+                          (rpm / 3000) * 15  # Pressure correlates with temp and RPM
+        vibration_mms = 5.0 + abs((temperature - 72) * 0.5) + \
+                       (rpm / 3000) * 8  # Vibration correlates with RPM
+        voltage_v = 13.2 + (rpm / 3000) * 0.5 - (temperature - 72) * 0.01
+        
+        # Clamp values to valid ranges
+        rpm = max(0, min(3000, rpm))
+        oil_pressure_psi = max(0.0, min(80.0, oil_pressure_psi))
+        vibration_mms = max(0.0, min(50.0, vibration_mms))
+        voltage_v = max(10.0, min(15.0, voltage_v))
+        
+        # Get ML insights if available
+        ml_insights = self._get_ml_insights(
+            temperature, rpm, oil_pressure_psi, vibration_mms
+        )
+        
         # Build response
         response = {
             "timestamp": self.current_time,
             "temperature": round(temperature, 1),
+            "rpm": rpm,
+            "oil_pressure_psi": round(oil_pressure_psi, 1),
+            "vibration_mms": round(vibration_mms, 1),
+            "voltage_v": round(voltage_v, 1),
             "state": agent_result["state"],
             "state_changed": agent_result["changed"],
             "alert_message": agent_result["alert_message"],
             "scheduled_tasks": scheduled_tasks,
             "simulation_time": self.simulation_time,
             "tick_count": self.tick_count,
+            "ml_insights": ml_insights,
         }
         
         # Optional: include debug info
@@ -164,6 +189,69 @@ class SimulationController:
             
             self.persistence_task_count += 1
             self.last_persistence_time = self.current_time
+    
+    def _get_ml_insights(
+        self,
+        temperature: float,
+        rpm: int,
+        oil_pressure_psi: float,
+        vibration_mms: float,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Get ML predictions for current sensor data.
+        
+        Args:
+            temperature: Current temperature (°F)
+            rpm: Current RPM
+            oil_pressure_psi: Current oil pressure
+            vibration_mms: Current vibration level
+            
+        Returns:
+            Dictionary with ML predictions or None if ML unavailable
+        """
+        try:
+            from ml_training_kaggle import MLModelTrainer
+            
+            # Lazy load and cache trainer
+            if not hasattr(self, '_ml_trainer'):
+                self._ml_trainer = MLModelTrainer()
+                self._ml_trainer.load_all_models()
+            
+            trainer = self._ml_trainer
+            
+            # Get predictions
+            fault_pred = trainer.predict_fault(
+                rpm=rpm,
+                pressure=oil_pressure_psi,
+                temp=temperature,
+                vib=vibration_mms
+            )
+            
+            vibration_pred = trainer.detect_vibration_anomaly(
+                bearing_1=vibration_mms,
+                bearing_2=vibration_mms * 0.9
+            )
+            
+            pressure_pred = trainer.predict_pressure(flow_rate=rpm/100)
+            
+            return {
+                "fault_detection": {
+                    "detected": fault_pred.get('fault', False),
+                    "confidence": fault_pred.get('confidence', 0.0)
+                },
+                "vibration_anomaly": {
+                    "detected": vibration_pred.get('anomaly', False),
+                    "score": vibration_pred.get('score', 0.0)
+                },
+                "pressure_prediction": {
+                    "predicted_pressure": pressure_pred.get('predicted_pressure', oil_pressure_psi),
+                    "actual_pressure": oil_pressure_psi
+                }
+            }
+        
+        except Exception as e:
+            # Graceful fallback if ML unavailable
+            return None
     
     def set_fault_injection(self, enabled: bool, magnitude: float = 0.0) -> None:
         """
