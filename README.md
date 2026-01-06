@@ -5,7 +5,7 @@ All student submissions must be made via Pull Request (PR) to ensure permanent r
 ⚠️ Do NOT create your own repository for submission.
 ⚠️ Do NOT email or zip your code.
 
-##Submission Method (Mandatory)
+## Submission Method (Mandatory)
 
 All students must submit their work by:
 
@@ -61,16 +61,90 @@ How to run the code
 
 Expected output
 
-📌 Example:
+## 📌 Example:
 
-## AI Image Classification
+### AI Image Classification
 
 This project classifies images using a CNN model.
 
-### How to Run
+#### How to Run
 pip install -r requirements.txt
 python main.py
 
-### Output
+#### Output
 Accuracy will be printed in the terminal.
 
+## 🔹 How to Submit (Step-by-Step)
+Step 1: Fork the Repository
+
+Click Fork (top-right of this page) to create your own copy.
+
+Step 2: Add Your Folder
+
+In your forked repo:
+
+Go to students/
+
+Create your folder using the required format
+
+Add main.py, requirements.txt, and README.md
+
+Step 3: Commit Your Changes
+
+Commit your work with a clear message:
+
+Add AI project submission - S12345_AliAhmad
+
+Step 4: Open a Pull Request
+
+Click Contribute → Open Pull Request
+
+Ensure:
+
+Base repository: Lecturer’s repo
+
+Base branch: main
+
+Submit your Pull Request
+
+🔹 Automated Code Checking (GitHub Actions)
+
+Once you submit a Pull Request:
+
+Your code will be automatically executed
+
+Results will appear under the Actions / Checks tab
+
+Status meaning:
+
+✅ Green: Code runs successfully
+
+❌ Red: Error detected (check logs)
+
+⚠️ Submissions with failing checks may receive reduced marks or zero marks, depending on assessment criteria.
+
+🔹 Important Rules & Restrictions
+
+❌ Do NOT modify or delete:
+
+Other students’ folders
+
+GitHub workflow files
+
+Root-level files
+
+❌ Do NOT include:
+
+Large datasets
+
+Pre-trained model files
+
+External configuration dependencies
+
+✅ Use small sample data or dummy inputs for demonstration.
+
+🔹 Late or Invalid Submissions
+
+Pull Requests submitted after the deadline may be penalised.
+
+Submissions without a successful GitHub Actions run may be considered not runnable.
