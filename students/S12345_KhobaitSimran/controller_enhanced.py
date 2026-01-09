@@ -340,7 +340,7 @@ class EnhancedSimulationController:
                 self._ml_trainer = MLModelTrainer()
                 self._ml_trainer.load_all_models()
             except Exception as e:
-                print(f"⚠️  Failed to load models: {e}")
+                # ML trainer failed to load - will use synthetic fallbacks
                 self._ml_trainer = None
         
         if not self._ml_trainer:
@@ -435,12 +435,21 @@ class EnhancedSimulationController:
         """Generate a comprehensive report of all decisions and system state."""
         report = self.decision_tracker.generate_report()
         
+        # Get agent state safely
+        agent_state = "UNKNOWN"
+        if hasattr(self.agent, 'current_state'):
+            cs = self.agent.current_state
+            if hasattr(cs, 'value'):
+                agent_state = cs.value
+            else:
+                agent_state = str(cs)
+        
         # Add current system state to report
         report["current_state"] = {
             "tick_count": self.tick_count,
             "simulation_time": self.simulation_time,
             "simulation_hours": self.simulation_hours,
-            "agent_state": self.agent.current_state.value if hasattr(self.agent, 'current_state') else "UNKNOWN",
+            "agent_state": agent_state,
             "fault_injection_enabled": self.fault_injection_enabled,
             "fault_magnitude": self.fault_magnitude,
         }

@@ -6,6 +6,17 @@ Real-time HVAC monitoring system with temperature simulation, state management, 
 
 **Status:** ✅ Complete - Ready for frontend integration
 
+### ✨ Latest Feature: Session Management System
+
+The backend now includes an **auto-checkpoint session management system** that enables:
+- ✅ Long-running analysis without data loss
+- ✅ Auto-save snapshots every 600 ticks (~5 minutes)
+- ✅ Session history tracking and comparison
+- ✅ Optional Firebase persistence
+- ✅ Frontend integration with SessionDashboard
+
+**See:** [SESSION_QUICK_START.md](SESSION_QUICK_START.md) | [SESSION_MANAGEMENT_GUIDE.md](SESSION_MANAGEMENT_GUIDE.md)
+
 ---
 
 ## Quick Start
@@ -14,29 +25,27 @@ Real-time HVAC monitoring system with temperature simulation, state management, 
 
 ```bash
 # No external dependencies required
-python3 main.py
+python3 server.py
 ```
 
 ### Basic Usage
 
 ```python
-from controller import SimulationController
+from controller_enhanced import EnhancedSimulationController
 
-ctrl = SimulationController(
+ctrl = EnhancedSimulationController(
     initial_temp=60,
     warmup_duration=5,
     drift_rate=0.5,
-    threshold_high=85,
-    threshold_low=50,
-    debounce_sec=1.5,
 )
 
-# Run simulation
-for i in range(100):
+# Run simulation - sessions auto-managed
+for i in range(1200):
     result = ctrl.tick()
-    print(f"Temp: {result['temperature']}°F, State: {result['state']}")
-    if result['state_changed']:
-        print(f"  ALERT: {result['alert_message']}")
+    print(f"Tick {i}: Temp {result['temperature']}°F")
+    
+    if result.get('checkpoint_created'):
+        print(f"  📊 Checkpoint created: {result['checkpoint_created']['checkpoint_id']}")
 ```
 
 ---
@@ -44,10 +53,12 @@ for i in range(100):
 ## Files & Components
 
 ### Core Modules
-- **`controller.py`** - Main API (SimulationController class)
+- **`server.py`** - Flask REST API with 8 session endpoints
+- **`controller_enhanced.py`** - Enhanced controller with 6-state FSM
+- **`session_manager.py`** - Auto-checkpoint + session management 🆕
 - **`simulator.py`** - Temperature simulation with warmup, drift, faults
-- **`agent.py`** - 3-state FSM with debounce logic
-- **`scheduler.py`** - Min-heap task scheduler for persistence
+- **`agent_enhanced.py`** - 6-state FSM with decision tracking
+- **`scheduler_dynamic.py`** - Min-heap task scheduler for maintenance
 
 ### Testing
 - **`test_unit.py`** - 19 unit tests (all passing)

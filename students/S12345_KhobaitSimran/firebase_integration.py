@@ -6,7 +6,7 @@ Handles real-time data persistence and audit logging
 import json
 import os
 from datetime import datetime
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 # Try to import Firebase Admin SDK
 try:
@@ -267,6 +267,138 @@ class FirebaseManager:
     def is_enabled(self) -> bool:
         """Check if Firebase is enabled and connected"""
         return self.enabled
+
+    def save_session(self, session_data: Dict[str, Any]) -> bool:
+        """
+        Save a completed session to Firestore
+        
+        Args:
+            session_data: Session summary data (dict from SessionSummary asdict)
+            
+        Returns:
+            bool: True if saved, False if Firebase unavailable
+        """
+        if not self.enabled or not self.db:
+            return False
+
+        try:
+            session_id = session_data.get("session_id")
+            self.db.collection("sessions").document(session_id).set({
+                "timestamp": datetime.utcnow(),
+                "session_id": session_id,
+                "start_time": session_data.get("start_time"),
+                "end_time": session_data.get("end_time"),
+                "duration_seconds": session_data.get("duration_seconds"),
+                "duration_ticks": session_data.get("duration_ticks"),
+                "temp_min": session_data.get("temp_min"),
+                "temp_max": session_data.get("temp_max"),
+                "temp_avg": session_data.get("temp_avg"),
+                "total_decisions": session_data.get("total_decisions"),
+                "total_dtc_events": session_data.get("total_dtc_events"),
+                "state_transitions": session_data.get("state_transitions"),
+                "max_severity_reached": session_data.get("max_severity_reached"),
+                "checkpoints_created": session_data.get("checkpoints_created"),
+                "critical_events_triggered": session_data.get("critical_events_triggered"),
+            })
+            return True
+
+        except Exception as e:
+            print(f"⚠️  Error saving session to Firebase: {str(e)}")
+            return False
+
+    def log_checkpoint(self, checkpoint_data: Dict[str, Any]) -> bool:
+        """
+        Log a checkpoint snapshot to Firestore
+        
+        Args:
+            checkpoint_data: Checkpoint data (dict from SessionCheckpoint asdict)
+            
+        Returns:
+            bool: True if logged, False if Firebase unavailable
+        """
+        if not self.enabled or not self.db:
+            return False
+
+        try:
+            checkpoint_id = checkpoint_data.get("checkpoint_id")
+            session_id = checkpoint_data.get("session_id")
+            
+            self.db.collection("checkpoints").document(checkpoint_id).set({
+                "timestamp": datetime.utcnow(),
+                "checkpoint_id": checkpoint_id,
+                "session_id": session_id,
+                "tick_count": checkpoint_data.get("tick_count"),
+                "temperature": checkpoint_data.get("temperature"),
+                "state": checkpoint_data.get("state"),
+                "severity": checkpoint_data.get("severity"),
+                "decision_count": checkpoint_data.get("decision_count"),
+                "active_dtcs": checkpoint_data.get("active_dtcs", []),
+                "critical_event_trigger": checkpoint_data.get("critical_event_trigger", False),
+                "trigger_reason": checkpoint_data.get("trigger_reason", ""),
+            })
+            return True
+
+        except Exception as e:
+            print(f"⚠️  Error logging checkpoint to Firebase: {str(e)}")
+            return False
+
+    def get_session_by_id(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Retrieve a session from Firestore
+        
+        Args:
+            session_id: The session ID to retrieve
+            
+        Returns:
+            dict: Session data if found, None otherwise
+        """
+        if not self.enabled or not self.db:
+            return None
+
+        try:
+            doc = self.db.collection("sessions").document(session_id).get()
+            if doc.exists:
+                data = doc.to_dict()
+                data["id"] = doc.id
+                return data
+            return None
+
+        except Exception as e:
+            print(f"⚠️  Error retrieving session from Firebase: {str(e)}")
+            return None
+
+    def get_session_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """
+        Get recent sessions from Firestore
+        
+        Args:
+            limit: Number of sessions to retrieve
+            
+        Returns:
+            list: Array of session documents
+        """
+        if not self.enabled or not self.db:
+            return []
+
+        try:
+            docs = (
+                self.db.collection("sessions")
+                .order_by("timestamp", direction=firestore.Query.DESCENDING)
+                .limit(limit)
+                .stream()
+            )
+
+            sessions = []
+            for doc in docs:
+                session = doc.to_dict()
+                session["id"] = doc.id
+                sessions.append(session)
+
+            return sessions
+
+        except Exception as e:
+            print(f"⚠️  Error retrieving session history from Firebase: {str(e)}")
+            return []
 
 
 # Global Firebase manager instance

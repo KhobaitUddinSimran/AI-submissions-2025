@@ -15,15 +15,18 @@ import { ReportPanel } from '@/components/scada/ReportPanel';
 import { ErrorNotification } from '@/components/scada/ErrorNotification';
 import { SplashScreen } from '@/components/scada/SplashScreen';
 import { MLModelsPanel } from '@/components/MLModelsPanel';
+import { SessionDashboard } from '@/components/SessionDashboard';
+import { ScenarioTester } from '@/components/ScenarioTester';
 import { useBackendData } from '@/hooks/useBackendData';
 import { useSimulatedData } from '@/hooks/useSimulatedData';
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { Alert, SensorData, Report } from '@/types/scada';
 import { Button } from '@/components/ui/button';
-import { RotateCcw, Play, Pause, Zap } from 'lucide-react';
+import { RotateCcw, Play, Pause, Zap, AlertCircle } from 'lucide-react';
 
 const Index = () => {
   const [showSplash, setShowSplash] = useState(true);
+  const [showScenarioTester, setShowScenarioTester] = useState(false);
   const [sensorHistory, setSensorHistory] = useState<SensorData[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -75,16 +78,35 @@ const Index = () => {
   }, [backendData, refetch]);
 
   // Reset everything
-  const handleReset = useCallback(() => {
-    setSensorHistory([]);
-    setAlerts([]);
+  const handleReset = useCallback(async () => {
+    // Stop playback
     setIsPlaying(false);
-    setFaultMagnitude(0);
     if (playIntervalRef.current) {
       clearInterval(playIntervalRef.current);
       playIntervalRef.current = null;
     }
-  }, []);
+    
+    // Clear frontend state
+    setSensorHistory([]);
+    setAlerts([]);
+    setReport(null);
+    setFaultMagnitude(0);
+    
+    // Call backend reset endpoint
+    if (isOnline) {
+      try {
+        const response = await fetch(
+          `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/reset`,
+          { method: 'POST' }
+        );
+        if (response.ok) {
+          console.log('Simulation reset successfully');
+        }
+      } catch (err) {
+        console.error('Failed to reset simulation:', err);
+      }
+    }
+  }, [isOnline]);
 
   // Fault Injection Slider
   const handleFaultChange = useCallback(async (magnitude: number) => {
@@ -227,6 +249,25 @@ const Index = () => {
         isSimulated={isSimulated}
       />
 
+      {/* Scenario Tester View */}
+      {showScenarioTester && (
+        <div className="flex-1 overflow-auto">
+          <ScenarioTester />
+          <div className="text-center py-6">
+            <Button
+              onClick={() => setShowScenarioTester(false)}
+              variant="outline"
+              className="border-slate-600 text-slate-300 hover:bg-slate-800/50"
+            >
+              ← Back to Dashboard
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Main Dashboard View */}
+      {!showScenarioTester && (
+        <>
       {/* Demo Mode Banner */}
       <div className="bg-gradient-to-r from-blue-950/60 to-cyan-950/40 border-b border-blue-800/50 px-6 py-3 backdrop-blur-sm space-y-3">
         <div className="flex items-center justify-between">
@@ -276,12 +317,23 @@ const Index = () => {
             <Button
               onClick={handleReset}
               disabled={isLoading}
-              variant="outline"
+              className="bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-semibold px-6 gap-2 disabled:opacity-50"
               size="sm"
-              className="border-slate-600 text-slate-300 hover:bg-slate-800/50 gap-2"
             >
               <RotateCcw className="w-4 h-4" />
               Reset
+            </Button>
+            <Button
+              onClick={() => setShowScenarioTester(!showScenarioTester)}
+              className={`gap-2 font-semibold px-6 ${
+                showScenarioTester
+                  ? 'bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700'
+                  : 'bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600'
+              } text-white`}
+              size="sm"
+            >
+              <AlertCircle className="w-4 h-4" />
+              {showScenarioTester ? 'Hide' : 'Test'} Scenarios
             </Button>
           </div>
         </div>
@@ -334,24 +386,31 @@ const Index = () => {
         <p className="text-xs text-slate-400 pl-8">Ticks: <span className="text-cyan-400 font-mono">{sensorHistory.length}</span> | Simulation Time: <span className="text-cyan-400 font-mono">{currentData?.simulation_time?.toFixed(1)}s</span></p>
       </div>
 
-      {/* Status Banners */}
-      {isSimulated && (
-        <div className="bg-amber-900/30 border-b border-amber-700 px-6 py-2">
-          <p className="text-xs text-amber-200">
-            ⚠ Running in simulation mode (backend offline)
-          </p>
-        </div>
-      )}
+        {/* Status Banners */}
+        {isSimulated && (
+          <div className="bg-amber-900/30 border-b border-amber-700 px-6 py-2">
+            <p className="text-xs text-amber-200">
+              ⚠ Running in simulation mode (backend offline)
+            </p>
+          </div>
+        )}
 
-      {backendError && (
-        <div className="bg-red-900/30 border-b border-red-700 px-6 py-2">
-          <p className="text-xs text-red-200">
-            ⚠ Backend Error: {backendError.message}
-          </p>
-        </div>
-      )}
+        {backendError && (
+          <div className="bg-red-900/30 border-b border-red-700 px-6 py-2">
+            <p className="text-xs text-red-200">
+              ⚠ Backend Error: {backendError.message}
+            </p>
+          </div>
+        )}
 
-      <main className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+        {/* Session Dashboard */}
+        {isOnline && (
+          <SessionDashboard />
+        )}
+
+        {/* Main Content Area */}
+        <main className="flex-1 p-4 md:p-6 space-y-4 md:space-y-6">
+
         {/* KPI Cards Row */}
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-4">
           <EngineStateCard 
@@ -456,6 +515,8 @@ const Index = () => {
       </main>
 
       <ErrorNotification message={backendError?.message || null} onDismiss={() => {}} />
+        </>
+      )}
     </div>
   );
 };

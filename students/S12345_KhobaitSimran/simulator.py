@@ -22,18 +22,21 @@ class TemperatureSimulator:
     def __init__(
         self,
         initial_temp: float = 70.0,
-        warmup_duration_sec: float = 5.0,
+        target_operating_temp: float = 180.0,  # Marine engine normal operating temp (°F)
+        warmup_duration_sec: float = 10.0,     # Time to reach operating temp
         drift_rate: float = 0.5
     ):
         """
         Initialize the TemperatureSimulator.
         
         Args:
-            initial_temp: Starting temperature in °F (default: 70)
-            warmup_duration_sec: Duration of warmup phase in seconds (default: 5)
+            initial_temp: Starting temperature in °F (default: 70, ambient)
+            target_operating_temp: Normal operating temperature (default: 180°F, marine engine)
+            warmup_duration_sec: Duration of warmup phase in seconds (default: 10)
             drift_rate: Temperature drift rate in °F per second after warmup (default: 0.5)
         """
         self.initial_temp = initial_temp
+        self.target_operating_temp = target_operating_temp
         self.warmup_duration_sec = warmup_duration_sec
         self.drift_rate = drift_rate
         
@@ -62,10 +65,10 @@ class TemperatureSimulator:
         
         if self.elapsed_time <= self.warmup_duration_sec:
             # Warmup phase: exponential decay T(t) = T_amb + (T_op - T_amb) * (1 - e^(-kt))
-            # Where T_amb = initial_temp, T_op = initial_temp + 10, k = decay constant
+            # Where T_amb = initial_temp, T_op = target operating temp, k = decay constant
             T_amb = self.initial_temp
-            T_op = self.initial_temp + 10.0  # Target operating temp (10°F above initial)
-            k = 1.0 / self.warmup_duration_sec  # Decay constant ensures ~95% reached in warmup_duration
+            T_op = self.target_operating_temp  # Target operating temp (e.g., 180°F for marine engine)
+            k = 3.0 / self.warmup_duration_sec  # Decay constant ensures ~95% reached in warmup_duration
             self.current_temp = T_amb + (T_op - T_amb) * (1 - math.exp(-k * self.elapsed_time))
         else:
             # Drift phase: apply drift after warmup
@@ -78,8 +81,8 @@ class TemperatureSimulator:
             fault_spike = random.uniform(-self.fault_magnitude, self.fault_magnitude)
             self.current_temp += fault_spike
         
-        # Clamp temperature to realistic range
-        self.current_temp = max(50.0, min(120.0, self.current_temp))
+        # Clamp temperature to realistic range (marine engine: 50-250°F)
+        self.current_temp = max(50.0, min(250.0, self.current_temp))
         
         return self.current_temp
     

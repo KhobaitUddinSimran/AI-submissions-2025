@@ -161,8 +161,8 @@ class DynamicScheduler:
         self._task_counter = 0
         self.simulation_hours = 0.0
         
-        # Initialize with standard maintenance tasks
-        self._init_standard_tasks()
+        # Start with no tasks - they will be generated dynamically as simulation runs
+        # Call _init_standard_tasks() to start with default tasks if needed
     
     def _init_standard_tasks(self) -> None:
         """Initialize standard periodic maintenance tasks."""
@@ -264,6 +264,10 @@ class DynamicScheduler:
         """
         self.simulation_hours += elapsed_hours
         
+        # Generate initial maintenance tasks after ~10 ticks (0.0014 hours = ~5 seconds of simulation)
+        if len(self.tasks) == 0 and self.simulation_hours > 0.0014:
+            self._init_standard_tasks()
+        
         # Update remaining time for all tasks
         for task in self.tasks.values():
             task.update_remaining_time(elapsed_hours)
@@ -361,9 +365,9 @@ class DynamicScheduler:
         }
     
     def clear(self) -> None:
-        """Clear all tasks and reinitialize."""
+        """Clear all tasks and reset scheduler state."""
         self.tasks = {}
         self._heap = []
         self._task_counter = 0
         self.simulation_hours = 0.0
-        self._init_standard_tasks()
+        # Don't reinitialize tasks - they will be generated dynamically
